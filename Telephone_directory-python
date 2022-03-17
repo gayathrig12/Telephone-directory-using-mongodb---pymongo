@@ -1,0 +1,111 @@
+import pymongo
+from pymongo import MongoClient
+import pandas as pd
+
+client = pymongo.MongoClient("mongodb+srv://username:password@cluster0.bdgfv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
+db = client.gayathri
+records = db.telephonedirectory
+
+#create contact
+i = True
+
+def create_contact():
+    try:
+        name = input("Enter the name: ")
+        num = int(input("Enter your number: "))
+        mail = input("Enter your mail id: ")
+        place = input("Enter the place: ")
+        details = {"name" : name, "number" : num, "mail_id" : mail, "place" : place}
+        records.insert_one(details)
+        records.create_index("mail_id",unique = True )
+        print("Contact Added Successfully\n")
+        pass
+        
+    except pymongo.errors.DuplicateKeyError:
+        print("Please enter a valid mail_id")
+        pass
+    
+def search_contact():
+    search = input("Please enter the name or number:")
+    if search.isnumeric() == True:
+        b = records.find({"number" : {"$eq":int(search)}})
+        if b is not None:
+            l = list(b)
+            d1 = pd.DataFrame(l)
+            print(d1)
+        else:
+            print("Number not found. Please try again.")
+    else:
+        my_query = { "$and" : [{"name" : search }, { "name" : {"$regex" : search , "$options" : 'i',}}]}
+        s = records.find(my_query)
+        for x in s: 
+            print(x)
+            
+def update_contact():
+    m = input('''Please enter the name of the field you would like to update: 
+              1. name
+              2. number
+              3. mail id
+              4. place   \n''')
+    x = records.find_one({ m : { "$exists": True }})
+    if x is not None:
+        a = input("Please enter your mail id")
+        y = records.find( { "mail_id" : a },{ "_id" : 0 } )
+        l1 = list(y)
+        df = pd.DataFrame(l1)
+        if len(df) != 0 :
+            print(df)
+        
+            print("Are you sure about updating the below details: (y/n)")
+            z = df[m]
+            print(m, ":" ,z[0])
+            s  = input()
+            if s == ("y" or "Y"):
+                k = input("Please enter the new value to be updated in the field. ")
+                myquery = { m : z[0] }
+                newvalues = { "$set": { m : k } }
+                records.update_one(myquery, newvalues)
+                print("Please find your updated details below: ")
+                x = pd.DataFrame(records.find({m : k},{"_id" : 0}))
+                print(x)
+            elif s == ("n" or "N"):
+                print("No changes made.")
+                #print("yes")
+        else:
+            print("Please enter a valid mail id.")
+    else:
+        print("You entered the wrong value. Please try again.")
+        
+#delete_contact        
+def delete_contact():
+    dl = input("Please enter the mail_id of the individual to be deleted: ")
+    my_query = {"mail_id" : dl}
+    dl1 = records.find_one(my_query)
+    records.delete_one(my_query)
+    if dl1 is not None:
+        print("Contact deleted successfully\n")
+    else:
+        print("Please enter a valid mail_id")
+    
+def display_contact():
+    x = pd.DataFrame(records.find())
+    print(x)
+    
+while i == True:
+    print("Please select the options :")
+    print("1. Create Contact")
+    print("2. Search Contact")
+    print("3. Update Contact")
+    print("4. Delete Contact")
+    print("5. Display all Contacts")
+    n = int(input())
+    if n == 1:
+        create_contact()
+    elif n == 2:
+        search_contact()
+    elif n == 3:
+        update_contact()
+    elif n == 4:
+        delete_contact()
+    elif n == 5:
+        display_contact()
